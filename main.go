@@ -192,7 +192,6 @@ func runServer(args []string, stdout, stderr io.Writer, effectiveUID int) error 
 	} else {
 		logger.Info("This process is not running as a systemd service.")
 	}
-	go route.EventListen()
 	logger.Info("User service is listening...", zap.Any("address", listener.Addr().String()), zap.String("filepath", addressFilePath))
 
 	var events []message_bus.EventType
