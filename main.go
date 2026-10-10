@@ -23,6 +23,7 @@ import (
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/authsecurity"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/config"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/processlock"
+	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/signingkey"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/sqlite"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/userbootstrap"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/route"
@@ -131,7 +132,16 @@ func runServer(args []string, stdout, stderr io.Writer, effectiveUID int) error 
 	if err != nil {
 		return err
 	}
-	service.MyService = service.NewService(sqliteDB, config.CommonInfo.RuntimePath, initializationState)
+	signingKey, created, err := signingkey.LoadOrCreate(filepath.Join(*dbFlag, signingkey.Filename), uint32(effectiveUID))
+	switch {
+	case err != nil:
+		// sessions do not survive a restart, as before; nothing is weakened
+		logger.Error("signing key not persisted, using a key held in memory", zap.Error(err))
+		signingKey = nil
+	case created:
+		logger.Info("new signing key: existing sessions are signed out once")
+	}
+	service.MyService = service.NewService(sqliteDB, config.CommonInfo.RuntimePath, initializationState, signingKey)
 	if service.MyService == nil || service.MyService.User() == nil {
 		return errors.New("initialize user service")
 	}

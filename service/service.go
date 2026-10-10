@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/ecdsa"
+
 	"github.com/EdmundFu-233/ReCasaOS-UserService/codegen/message_bus"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/config"
 	"github.com/EdmundFu-233/ReCasaOS-UserService/pkg/gatewayclient"
@@ -18,7 +20,7 @@ type Repository interface {
 	Event() EventService
 }
 
-func NewService(db *gorm.DB, RuntimePath string, initializationState userbootstrap.State) Repository {
+func NewService(db *gorm.DB, RuntimePath string, initializationState userbootstrap.State, signingKey *ecdsa.PrivateKey) Repository {
 
 	gatewayManagement, err := gatewayclient.New(RuntimePath)
 	if err != nil {
@@ -27,7 +29,7 @@ func NewService(db *gorm.DB, RuntimePath string, initializationState userbootstr
 
 	return &store{
 		gateway: gatewayManagement,
-		user:    NewUserService(db, initializationState),
+		user:    NewUserServiceWithKey(db, initializationState, signingKey),
 		event:   NewEventService(db),
 	}
 }
