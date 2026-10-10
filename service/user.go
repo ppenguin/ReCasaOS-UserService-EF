@@ -293,18 +293,26 @@ func (u *userService) GetKeyPair() (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
 	return u.privateKey, u.publicKey
 }
 
-// 获取用户Service
+// NewUserService signs with a key held in memory only: every restart signs
+// everybody out. The service uses NewUserServiceWithKey (pkg/signingkey).
 func NewUserService(db *gorm.DB, initializationState userbootstrap.State) UserService {
-	// DO NOT store private key anywhere - keep it in memory ONLY!!!
-	privateKey, publicKey, err := jwt.GenerateKeyPair()
-	if err != nil {
-		logger.Error("failed to generate key pair for JWT", zap.Error(err))
-		return nil
+	return NewUserServiceWithKey(db, initializationState, nil)
+}
+
+// NewUserServiceWithKey signs with privateKey, or with a key made here when nil.
+func NewUserServiceWithKey(db *gorm.DB, initializationState userbootstrap.State, privateKey *ecdsa.PrivateKey) UserService {
+	if privateKey == nil {
+		var err error
+		privateKey, _, err = jwt.GenerateKeyPair()
+		if err != nil {
+			logger.Error("failed to generate key pair for JWT", zap.Error(err))
+			return nil
+		}
 	}
 
 	return &userService{
 		privateKey:          privateKey,
-		publicKey:           publicKey,
+		publicKey:           &privateKey.PublicKey,
 		db:                  db,
 		initializationState: initializationState,
 	}
